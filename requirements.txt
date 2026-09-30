@@ -1,0 +1,7 @@
+aiogram>=3.4.1
+SQLAlchemy[asyncio]>=2.0.28
+greenlet>=3.0.0
+aiosqlite>=0.20.0
+cryptography>=42.0.5
+pydantic-settings>=2.2.1
+python-dotenv>=1.0.1
