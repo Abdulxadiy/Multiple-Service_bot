@@ -13,7 +13,7 @@ class User(Base):
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recovery_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     # Aloqalar
     categories: Mapped[list["Category"]] = relationship(
@@ -31,7 +31,7 @@ class Category(Base):
         BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), index=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     # Aloqalar
     user: Mapped["User"] = relationship("User", back_populates="categories")
@@ -53,9 +53,9 @@ class Account(Base):
     login: Mapped[str | None] = mapped_column(String(255), nullable=True)
     encrypted_password: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utc_now, onupdate=utc_now
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
     # Aloqalar
@@ -69,4 +69,5 @@ class PendingDeletion(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    delete_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    delete_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
