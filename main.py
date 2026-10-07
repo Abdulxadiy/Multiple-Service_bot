@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 
 from config.settings import settings
 from core.database.session import init_db, engine
+from core.middlewares.throttling import ThrottlingMiddleware
 from core.middlewares.user_middleware import UserTrackingMiddleware
 from core.handlers.base import base_router
 from services.password_manager.router import password_manager_router
@@ -23,7 +24,16 @@ logger = logging.getLogger("main")
 async def main():
     logger.info("Bot tizimi initsializatsiya qilinmoqda...")
 
-    # 1. Bazani ishga tushirish (jadvallarni yaratish)
+    # 1. Shifrlash kalitini tekshirish
+    encryption_key = settings.get_encryption_key()
+    if not settings.ENCRYPTION_KEY:
+        logger.warning(
+            "⚠️  DIQQAT: ENCRYPTION_KEY .env faylida ko'rsatilmagan! "
+            "Serverda (AWS/Docker) ishlaganda ushbu kalitni .env ga kiritish shart, "
+            "aks holda konteyner o'chganda parollar yo'qoladi!"
+        )
+
+    # 2. Bazani ishga tushirish (jadvallarni yaratish)
     logger.info("Ma'lumotlar bazasi jadvallari tekshirilmoqda...")
     await init_db()
     logger.info("Baza muvaffaqiyatli tayyorlandi.")
@@ -41,23 +51,26 @@ async def main():
         )
         return
 
-    # 2. Bot va Dispatcher obyektlari
+    # 3. Bot va Dispatcher obyektlari
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
 
-    # 3. Middleware larni ro'yxatga olish
+    # 4. Middleware larni ro'yxatga olish (Anti-flood + User tracking)
+    dp.message.middleware(ThrottlingMiddleware())
+    dp.callback_query.middleware(ThrottlingMiddleware())
     dp.message.middleware(UserTrackingMiddleware())
     dp.callback_query.middleware(UserTrackingMiddleware())
 
-    # 4. Modulli routerlarni ulash
+    # 5. Modulli routerlarni ulash
     dp.include_router(base_router)
     dp.include_router(password_manager_router)
 
-    # 5. 20 daqiqalik avto-o'chirish fondagi xizmatini ishga tushirish
+    # 6. 20 daqiqalik avto-o'chirish fondagi xizmatini ishga tushirish
     cleaner_task = asyncio.create_task(auto_delete_worker(bot))
+
 
     logger.info("Multiple-Service Bot tayyor va polling rejimida ishga tushmoqda...")
 
