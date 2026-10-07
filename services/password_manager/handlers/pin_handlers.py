@@ -10,6 +10,7 @@ from utils.crypto import (
     generate_recovery_code,
     decrypt_password
 )
+from utils.security import pin_tracker, upgrade_pin_hash_if_needed
 from services.password_manager.states import (
     PINSetupStates,
     PINChangeStates,
@@ -104,23 +105,53 @@ async def start_change_pin(callback: CallbackQuery, state: FSMContext):
 @pin_router.message(PINChangeStates.waiting_for_old_pin)
 async def process_old_pin(message: Message, state: FSMContext):
     pin = message.text.strip() if message.text else ""
+    user_id = message.from_user.id
     try:
         await message.delete()
     except Exception:
         pass
 
+    # Blokirovka tekshiruvi
+    is_locked, remaining_secs = pin_tracker.is_locked(user_id)
+    if is_locked:
+        wait_min = (remaining_secs // 60) + 1
+        await message.answer(
+            f"⏳ <b>Xavfsizlik blokirovkasi!</b>\n\n"
+            f"PIN noto'g'ri kiritilganligi sababli xizmat bloklangan. "
+            f"Iltimos, <b>{wait_min} daqiqa</b>dan so'ng qayta urinib ko'ring.",
+            parse_mode="HTML"
+        )
+        await state.clear()
+        return
+
     async with async_session_maker() as session:
         result = await session.execute(
-            select(User).where(User.telegram_id == message.from_user.id)
+            select(User).where(User.telegram_id == user_id)
         )
         user = result.scalar_one_or_none()
         if not user or not verify_secret(pin, user.pin_hash or ""):
-            await message.answer("❌ Eski PIN-kod noto'g'ri kiritildi! Bekor qilindi.")
+            attempts, is_now_locked, left = pin_tracker.record_failure(user_id)
             await state.clear()
+            if is_now_locked:
+                await message.answer(
+                    "🚫 <b>Xavfsizlik choralari ishga tushdi!</b>\n"
+                    "PIN-kod 5 marta noto'g'ri kiritildi va tizim 10 daqiqaga bloklandi.",
+                    parse_mode="HTML"
+                )
+            else:
+                await message.answer(
+                    f"❌ <b>Eski PIN-kod noto'g'ri kiritildi!</b> (Qolgan urinishlar: {left} ta)\n"
+                    "Amaliyot bekor qilindi.",
+                    parse_mode="HTML"
+                )
             return
+
+        pin_tracker.record_success(user_id)
+        await upgrade_pin_hash_if_needed(session, user, pin)
 
     await state.set_state(PINChangeStates.waiting_for_new_pin)
     await message.answer("🆕 Endi yangi PIN-kodni kiriting (kamida 4 ta belgi):")
+
 
 @pin_router.message(PINChangeStates.waiting_for_new_pin)
 async def process_change_new_pin(message: Message, state: FSMContext):
