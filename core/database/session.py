@@ -3,11 +3,23 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from config.settings import settings
 from core.database.base import Base
 
-# Asinxron dvijok va sessiyalar fabrikasi
+engine_kwargs = {
+    "echo": False,
+    "future": True,
+}
+
+# PostgreSQL uchun ulanish havzasi (connection pooling) va uzilishlardan himoya
+if "postgresql" in settings.DATABASE_URL:
+    engine_kwargs.update({
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_pre_ping": True,  # Uzilgan yoki qotib qolgan sessiyalarni avtomatik qayta tiklaydi
+    })
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=False,
-    future=True
+    **engine_kwargs
 )
 
 async_session_maker = async_sessionmaker(
@@ -25,3 +37,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Asinxron sessiyani olish uchun kontekst menejer"""
     async with async_session_maker() as session:
         yield session
+
