@@ -10,6 +10,7 @@ from utils.crypto import (
     verify_secret,
     generate_strong_password
 )
+from utils.security import pin_tracker, upgrade_pin_hash_if_needed
 from core.tasks.cleaner import register_auto_delete_message
 from services.password_manager.states import (
     AccountAddStates,
@@ -232,6 +233,18 @@ async def request_pin_to_view(callback: CallbackQuery, state: FSMContext):
     account_id = int(callback.data.split(":")[2])
     user_id = callback.from_user.id
 
+    # Brute-force blokirovkasi tekshiruvi
+    is_locked, remaining_secs = pin_tracker.is_locked(user_id)
+    if is_locked:
+        wait_min = (remaining_secs // 60) + 1
+        await callback.message.answer(
+            f"⏳ <b>Xavfsizlik blokirovkasi!</b>\n\n"
+            f"Siz bir necha bor xato PIN kiritgansiz. Seyf himoya rejimida.\n"
+            f"Iltimos, <b>{wait_min} daqiqa</b>dan so'ng qayta urinib ko'ring.",
+            parse_mode="HTML"
+        )
+        return
+
     async with async_session_maker() as session:
         user_res = await session.execute(select(User).where(User.telegram_id == user_id))
         user = user_res.scalar_one_or_none()
@@ -263,6 +276,18 @@ async def process_pin_and_show_account(message: Message, state: FSMContext):
     except Exception:
         pass
 
+    # Brute-force blokirovkasi tekshiruvi
+    is_locked, remaining_secs = pin_tracker.is_locked(user_id)
+    if is_locked:
+        wait_min = (remaining_secs // 60) + 1
+        await message.answer(
+            f"⏳ <b>Xavfsizlik blokirovkasi!</b>\n\n"
+            f"Seyf vaqtincha bloklangan. Iltimos, <b>{wait_min} daqiqa</b>dan so'ng qayta urinib ko'ring.",
+            parse_mode="HTML"
+        )
+        await state.clear()
+        return
+
     data = await state.get_data()
     account_id = data.get("account_id")
 
@@ -271,13 +296,29 @@ async def process_pin_and_show_account(message: Message, state: FSMContext):
         user = user_res.scalar_one_or_none()
 
         if not user or not verify_secret(entered_pin, user.pin_hash or ""):
+            attempts, is_now_locked, left = pin_tracker.record_failure(user_id)
+            if is_now_locked:
+                await state.clear()
+                await message.answer(
+                    "🚫 <b>Xavfsizlik choralari ishga tushdi!</b>\n\n"
+                    "PIN-kod ketma-ket 5 marta noto'g'ri kiritildi. "
+                    "Seyf 10 daqiqaga bloklandi.",
+                    parse_mode="HTML"
+                )
+                return
+
             await message.answer(
-                "❌ <b>Noto'g'ri PIN-kod!</b>\n"
+                f"❌ <b>Noto'g'ri PIN-kod!</b> (Qolgan urinishlar: {left} ta)\n"
                 "Qaytadan kiriting yoki agar unutgan bo'lsangiz tiklash tugmasini bosing:",
                 reply_markup=get_pin_prompt_keyboard(account_id or 0),
                 parse_mode="HTML"
             )
             return
+
+        # To'g'ri PIN kiritilganda blok holatini tozalaymiz
+        pin_tracker.record_success(user_id)
+        # Agar eski xesh bo'lsa, uni xavfsiz PBKDF2 ga yangilaymiz
+        await upgrade_pin_hash_if_needed(session, user, entered_pin)
 
         acc_res = await session.execute(
             select(Account).where(Account.id == account_id, Account.user_id == user_id)
