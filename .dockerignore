@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.secret_key
+*.db
+bot.db
+.pytest_cache
+.coverage
+htmlcov
+.idea
+.vscode
+*.log
