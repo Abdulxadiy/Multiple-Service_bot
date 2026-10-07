@@ -83,10 +83,49 @@ cp .env.example .env
 BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
 ```
 
-### 4. Botni ishga tushirish:
+### 4. Botni ishga tushirish (Lokal rejimda):
 ```bash
 python main.py
 ```
+
+---
+
+## 🐘 PostgreSQL ga Migratsiya va Mavjud Ma'lumotlarni Ko'chirish
+
+Lokal SQLite (`bot.db`) dagi foydalanuvchilar, kategoriyalar va barcha parollarni yangi PostgreSQL bazasiga to'liq ko'chirish:
+
+```bash
+python scripts/migrate_sqlite_to_pg.py --pg-url postgresql://botuser:parol@localhost:5432/botdb
+```
+> **Diqqat:** Parollarni ochish uchun `.secret_key` ichidagi kalitni production `.env` faylidagi `ENCRYPTION_KEY=` qatoriga ko'chiring!
+
+---
+
+## 🐳 Docker & Docker Compose orqali Ishga Tushirish (Production)
+
+1. `.env` faylini sozlang:
+```bash
+cp .env.example .env
+nano .env # BOT_TOKEN, ENCRYPTION_KEY va parollarni kiriting
+```
+
+2. Konteynerlarni bir buyruq bilan ko'taring:
+```bash
+docker-compose up -d --build
+```
+
+3. Loglarni kuzatish:
+```bash
+docker-compose logs -f bot
+```
+
+---
+
+## ☁️ AWS ga Joylash (Production Best Practices)
+
+- **AWS EC2 (t4g.micro yoki t3.micro):** Docker & Docker Compose o'rnatib, botni fon rejimida uzluksiz yurgizish.
+- **AWS RDS PostgreSQL:** Ishonchli, avtomatik zaxiralanuvchi ma'lumotlar bazasi.
+- **AWS S3 Backup:** `scripts/backup_db.sh` orqali har kuni bazani S3 ga avtomatik zaxiralash.
 
 ---
 
