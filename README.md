@@ -90,16 +90,6 @@ python main.py
 
 ---
 
-## 🐘 PostgreSQL ga Migratsiya va Mavjud Ma'lumotlarni Ko'chirish
-
-Lokal SQLite (`bot.db`) dagi foydalanuvchilar, kategoriyalar va barcha parollarni yangi PostgreSQL bazasiga to'liq ko'chirish:
-
-```bash
-python scripts/migrate_sqlite_to_pg.py --pg-url postgresql://botuser:parol@localhost:5432/botdb
-```
-> **Diqqat:** Parollarni ochish uchun `.secret_key` ichidagi kalitni production `.env` faylidagi `ENCRYPTION_KEY=` qatoriga ko'chiring!
-
----
 
 ## 🐳 Docker & Docker Compose orqali Ishga Tushirish (Production)
 
