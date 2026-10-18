@@ -31,6 +31,9 @@ class User(Base):
     transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction", back_populates="user", cascade="all, delete-orphan"
     )
+    finance_categories: Mapped[list["FinanceCategory"]] = relationship(
+        "FinanceCategory", back_populates="user", cascade="all, delete-orphan"
+    )
 
 class Category(Base):
     __tablename__ = "categories"
@@ -140,3 +143,19 @@ class Transaction(Base):
     # Aloqalar
     user: Mapped["User"] = relationship("User", back_populates="transactions")
     wallet: Mapped["Wallet | None"] = relationship("Wallet", back_populates="transactions")
+
+class FinanceCategory(Base):
+    """Foydalanuvchining shaxsiy moliya kategoriyalari (Kirim va Chiqim)"""
+    __tablename__ = "finance_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    type: Mapped[str] = mapped_column(String(10), nullable=False)  # 'income' yoki 'expense'
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    # Aloqalar
+    user: Mapped["User"] = relationship("User", back_populates="finance_categories")
+

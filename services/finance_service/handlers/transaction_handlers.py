@@ -4,11 +4,12 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 
 from core.database.session import async_session_maker
-from core.database.models import User, Wallet, Transaction
+from core.database.models import User, Wallet, Transaction, FinanceCategory
 from services.finance_service.states import FinanceState
 from services.finance_service.keyboards import (
     get_cancel_keyboard,
     get_skip_note_keyboard,
+    get_skip_category_name_keyboard,
     get_categories_keyboard,
     get_wallets_keyboard,
     get_finance_main_keyboard
@@ -16,7 +17,9 @@ from services.finance_service.keyboards import (
 from services.finance_service.utils import (
     format_money,
     parse_money_input,
-    detect_category
+    detect_category,
+    get_user_finance_categories,
+    sanitize_category_name
 )
 from services.finance_service.handlers.menu_handlers import ensure_default_wallets
 
@@ -73,27 +76,111 @@ async def process_wallet_selection(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     t_type = data.get("transaction_type", "expense")
 
+    async with async_session_maker() as session:
+        user_categories = await get_user_finance_categories(session, callback.from_user.id, t_type)
+
     await state.set_state(FinanceState.waiting_for_category)
     text = "📂 <b>Kategoriyani tanlang:</b>"
-    await callback.message.edit_text(text, reply_markup=get_categories_keyboard(t_type), parse_mode="HTML")
+    await callback.message.edit_text(text, reply_markup=get_categories_keyboard(user_categories, t_type), parse_mode="HTML")
 
-@transaction_router.callback_query(FinanceState.waiting_for_category, F.data.startswith("fin_cat:"))
-async def process_category_selection(callback: CallbackQuery, state: FSMContext):
-    category = callback.data.split(":", 1)[1]
+@transaction_router.callback_query(FinanceState.waiting_for_category, F.data == "fin_cat_other")
+async def process_other_category_clicked(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.update_data(category=category)
+    await state.set_state(FinanceState.waiting_for_new_category_name)
 
     data = await state.get_data()
-    # Agar oldindan izoh yozilgan bo'lsa (masalan: "35000 tushlik")
-    if data.get("preliminary_note"):
-        await save_transaction(callback.message, state, data.get("preliminary_note"), is_callback=True)
-        return
+    t_type = data.get("transaction_type", "expense")
+    t_label = "daromad" if t_type == "income" else "xarajat"
 
-    await state.set_state(FinanceState.waiting_for_note)
     text = (
+        f"🏷 <b>Yangi {t_label} kategoriyasi nomini kiriting:</b>\n\n"
+        "Masalan: <i>Kutubxona</i>, <i>Kantselyariya</i> yoki <i>Kredit</i>.\n\n"
+        "Nom kiritmasdan o'tkazib yuborish ham mumkin:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_skip_category_name_keyboard(), parse_mode="HTML")
+
+@transaction_router.callback_query(FinanceState.waiting_for_new_category_name, F.data == "fin_cat_other:skip")
+async def process_skip_new_category_name(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    data = await state.get_data()
+    t_type = data.get("transaction_type", "expense")
+    default_cat_name = "🔄 Boshqa daromad" if t_type == "income" else "🔄 Boshqa xarajat"
+
+    await state.update_data(category=default_cat_name)
+    await state.set_state(FinanceState.waiting_for_note)
+
+    text = (
+        f"📂 <b>Kategoriya:</b> {default_cat_name}\n\n"
         "✍️ <b>Izoh kiritasizmi?</b>\n\n"
         "Masalan: «Oila uchun bozorlik» yoki «Tushlik do'stlar bilan».\n"
-        "Agar kerak bo'lmasa, pastdagi tugmani bosing:"
+        "Izohsiz saqlash uchun pastdagi tugmani bosing:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_skip_note_keyboard(), parse_mode="HTML")
+
+@transaction_router.message(FinanceState.waiting_for_new_category_name, F.text)
+async def process_new_category_name_entered(message: Message, state: FSMContext):
+    data = await state.get_data()
+    t_type = data.get("transaction_type", "expense")
+    user_id = message.from_user.id
+    cat_name = sanitize_category_name(message.text)
+
+    # Foydalanuvchining kategoriyalariga qo'shamiz (DB ga saqlaymiz)
+    async with async_session_maker() as session:
+        existing = await session.execute(
+            select(FinanceCategory).where(
+                FinanceCategory.user_id == user_id,
+                FinanceCategory.type == t_type,
+                FinanceCategory.name == cat_name
+            )
+        )
+        if not existing.scalar_one_or_none():
+            new_cat = FinanceCategory(user_id=user_id, type=t_type, name=cat_name)
+            session.add(new_cat)
+            await session.commit()
+
+    await state.update_data(category=cat_name)
+    await state.set_state(FinanceState.waiting_for_note)
+
+    text = (
+        f"✅ Yangi kategoriya <b>«{cat_name}»</b> ro'yxatingizga qo'shildi!\n\n"
+        "✍️ <b>Izoh kiritasizmi?</b>\n\n"
+        "Masalan: «Oila uchun bozorlik» yoki «Tushlik do'stlar bilan».\n"
+        "Izohsiz saqlash uchun pastdagi tugmani bosing:"
+    )
+    await message.answer(text, reply_markup=get_skip_note_keyboard(), parse_mode="HTML")
+
+@transaction_router.callback_query(FinanceState.waiting_for_category, F.data.startswith("fin_cat_id:"))
+async def process_category_by_id_selection(callback: CallbackQuery, state: FSMContext):
+    cat_id = int(callback.data.split(":")[1])
+    await callback.answer()
+
+    async with async_session_maker() as session:
+        cat = await session.get(FinanceCategory, cat_id)
+        cat_name = cat.name if cat else "🔄 Boshqa"
+
+    await state.update_data(category=cat_name)
+    await state.set_state(FinanceState.waiting_for_note)
+
+    text = (
+        f"📂 <b>Kategoriya:</b> {cat_name}\n\n"
+        "✍️ <b>Izoh kiritasizmi?</b>\n\n"
+        "Masalan: «Oila uchun bozorlik» yoki «Tushlik do'stlar bilan».\n"
+        "Izohsiz saqlash uchun pastdagi tugmani bosing:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_skip_note_keyboard(), parse_mode="HTML")
+
+@transaction_router.callback_query(FinanceState.waiting_for_category, F.data.startswith("fin_cat:"))
+async def process_category_legacy_selection(callback: CallbackQuery, state: FSMContext):
+    cat_name = callback.data.split(":", 1)[1]
+    await callback.answer()
+    await state.update_data(category=cat_name)
+    await state.set_state(FinanceState.waiting_for_note)
+
+    text = (
+        f"📂 <b>Kategoriya:</b> {cat_name}\n\n"
+        "✍️ <b>Izoh kiritasizmi?</b>\n\n"
+        "Masalan: «Oila uchun bozorlik» yoki «Tushlik do'stlar bilan».\n"
+        "Izohsiz saqlash uchun pastdagi tugmani bosing:"
     )
     await callback.message.edit_text(text, reply_markup=get_skip_note_keyboard(), parse_mode="HTML")
 
