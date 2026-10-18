@@ -1,4 +1,4 @@
-# 🤖 Multiple-Service Telegram Bot (v1.8.0)
+# 🤖 Multiple-Service Telegram Bot (v1.9.0)
 
 **Multiple-Service Bot** — bir nechta mustaqil foydali xizmatlarni bitta qulay platformada birlashtiruvchi ko'p xizmatli Telegram bot. Loyiha kengayuvchan, toza va modulli (Modular Monolith) arxitekturada qurilgan.
 
@@ -38,6 +38,22 @@ Ushbu xizmat muhim ishlar, to'lovlar, uchrashuvlar va rejalar uchun o'z vaqtida 
 
 ---
 
+## 💰 3-Xizmat: Moliya va Hamyon (Personal Finance & Expense Tracker)
+
+Shaxsiy byudjet, daromadlar va xarajatlarni oson va qulay yuritish xizmati.
+
+### 💵 Asosiy Xususiyatlar:
+- **💳 Ko'p Hamyonli Tizim:** `💳 Karta`, `💵 Naqd pul`, `🏦 Jamg'arma` kabi alohida hamyonlar va umumiy balans nazorati.
+- **⚡️ Tezkor Kiritish (Instant Smart Input):** Menyularda aylanmasdan, shunchaki xabar yozish orqali xarajat/daromad qo'shish:
+  - `35000 tushlik` ➡️ 🍔 Oziq-ovqat chiqimi (35 000 so'm)
+  - `+2500000 oylik` ➡️ 💼 Maosh daromadi (+2 500 000 so'm)
+  - `50k taxi` ➡️ 🚕 Transport chiqimi (50 000 so'm)
+- **📂 Avtomatik Kategoriya Ajratish:** Matndagi so'zlarga qarab avtomatik kategoriya belgilash (Oziq-ovqat, Transport, Kommunal, Xaridlar, Sog'liq, Kafe va b.).
+- **📊 Batafsil Hisobotlar va Tahlil:** Kunlik, haftalik va oylik hisobotlar, eng ko'p xarajat qilingan TOP kategoriyalar foizlari bilan.
+- **📜 Oxirgi Amallar Tarixi:** Xarajatlar va tushumlar ketma-ketligi.
+
+---
+
 ## 🛠 Texnologik Stek
 
 - **Til:** Python 3.11+ (Python 3.14 qo'llab-quvvatlanadi)
@@ -57,19 +73,19 @@ Multiple-Service_bot/
 ├── config/                  # Sozlamalar va muhit o'zgaruvchilari
 │   └── settings.py
 ├── core/                    # Umumiy yadro tizimi
-│   ├── database/            # Baza modellari (User, Account, Reminder)
+│   ├── database/            # Baza modellari (User, Account, Reminder, Wallet, Transaction)
 │   ├── handlers/            # Asosiy menyu, xizmatlar, sozlamalar
 │   ├── keyboards/           # Umumiy navigatsiya tugmalari
 │   ├── middlewares/         # Anti-flood va user tracking
 │   └── tasks/               # Fondagi tozalovchi va reminder workerlar
 ├── services/                # Modulli xizmatlar
 │   ├── password_manager/    # 1-Xizmat: Parollar seyfi
-│   └── reminder_service/    # 2-Xizmat: Eslatmalar va bildirishnomalar
-│       ├── handlers/        # Eslatma yaratish, harakatlar, ro'yxat
-│       ├── keyboards.py     # Eslatmalar tugmalari
+│   ├── reminder_service/    # 2-Xizmat: Eslatmalar va bildirishnomalar
+│   └── finance_service/     # 3-Xizmat: Moliya va hamyon
+│       ├── handlers/        # Hamyon, kirim-chiqim, hisobotlar
+│       ├── keyboards.py     # Moliya tugmalari
 │       ├── states.py        # FSM holatlari
-│       ├── stt.py           # Ovozni matnga o'girish (STT)
-│       └── utils.py         # Toshkent vaqti va aqlli time parser
+│       └── utils.py         # Summa parseri, kategoriyalar, formatlash
 ├── utils/                   # Kriptografiya va xavfsizlik
 │   └── crypto.py
 ├── main.py                  # Dasturni ishga tushirish nuqtasi

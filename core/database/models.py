@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import BigInteger, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database.base import Base
 
@@ -24,6 +24,12 @@ class User(Base):
     )
     reminders: Mapped[list["Reminder"]] = relationship(
         "Reminder", back_populates="user", cascade="all, delete-orphan"
+    )
+    wallets: Mapped[list["Wallet"]] = relationship(
+        "Wallet", back_populates="user", cascade="all, delete-orphan"
+    )
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction", back_populates="user", cascade="all, delete-orphan"
     )
 
 class Category(Base):
@@ -94,3 +100,43 @@ class Reminder(Base):
 
     # Aloqalar
     user: Mapped["User"] = relationship("User", back_populates="reminders")
+
+class Wallet(Base):
+    """Foydalanuvchining hamyonlari (Karta, Naqd pul, Jamg'arma)"""
+    __tablename__ = "wallets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False)  # masalan: '💳 Karta', '💵 Naqd pul'
+    balance: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)  # so'mda
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    # Aloqalar
+    user: Mapped["User"] = relationship("User", back_populates="wallets")
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction", back_populates="wallet", cascade="all, delete-orphan"
+    )
+
+class Transaction(Base):
+    """Kirim va chiqim amallari tarixi"""
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    wallet_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True
+    )
+    type: Mapped[str] = mapped_column(String(10), nullable=False)  # 'income' yoki 'expense'
+    amount: Mapped[int] = mapped_column(BigInteger, nullable=False)  # musbat miqdor (so'mda)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)  # '🍔 Oziq-ovqat', '🚕 Transport', etc.
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    # Aloqalar
+    user: Mapped["User"] = relationship("User", back_populates="transactions")
+    wallet: Mapped["Wallet | None"] = relationship("Wallet", back_populates="transactions")

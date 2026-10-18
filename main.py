@@ -12,6 +12,7 @@ from core.middlewares.user_middleware import UserTrackingMiddleware
 from core.handlers.base import base_router
 from services.password_manager.router import password_manager_router
 from services.reminder_service.router import reminder_router
+from services.finance_service.router import finance_router
 from core.tasks.cleaner import auto_delete_worker
 from core.tasks.reminder_worker import reminder_worker
 
@@ -70,6 +71,7 @@ async def main():
     dp.include_router(base_router)
     dp.include_router(password_manager_router)
     dp.include_router(reminder_router)
+    dp.include_router(finance_router)
 
     # 6. Fondagi xizmatlarni ishga tushirish
     cleaner_task = asyncio.create_task(auto_delete_worker(bot))
