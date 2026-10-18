@@ -8,4 +8,5 @@ alembic>=1.13.1
 cryptography>=42.0.5
 pydantic-settings>=2.2.1
 python-dotenv>=1.0.1
-
+SpeechRecognition>=3.14.0
+groq>=0.15.0

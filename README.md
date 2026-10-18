@@ -1,6 +1,6 @@
-# 🤖 Multiple-Service Telegram Bot
+# 🤖 Multiple-Service Telegram Bot (v1.8.0)
 
-**Multiple-Service Bot** — bir nechta mustaqil xizmatlarni bitta qulay platformada birlashtiruvchi ko'p xizmatli Telegram bot. Loyiha kengayuvchan, modulli (Modular Monolith) arxitekturada qurilgan.
+**Multiple-Service Bot** — bir nechta mustaqil foydali xizmatlarni bitta qulay platformada birlashtiruvchi ko'p xizmatli Telegram bot. Loyiha kengayuvchan, toza va modulli (Modular Monolith) arxitekturada qurilgan.
 
 ---
 
@@ -17,15 +17,34 @@ Ushbu modul foydalanuvchilarning login, parol va maxfiy ma'lumotlarini bank dara
   2. *Bilim Asosida Tiklash (Knowledge-based):* Seyfda saqlangan ixtiyoriy bitta login/parolni to'g'ri kiritish orqali.
 - **1-Bosishda Nusxalash:** Monospaced (`<code>...</code>`) formati orqali parollarni bir marta teginishda xavfsiz nusxalash.
 - **🎲 Kuchli Parol Generatori:** Katta/kichik harflar, raqamlar va maxsus belgilar asosida 16 xonali murakkab parollar yaratish.
-- **To'liq Izolyatsiya:** Har bir foydalanuvchining ma'lumotlari faqat uning `user_id` siga bog'langan va boshqa foydalanuvchilarga mutlaqo ko'rinmaydi.
+- **To'liq Izolyatsiya:** Har bir foydalanuvchining ma'lumotlari faqat uning `user_id` siga bog'langan.
+
+---
+
+## 📝 2-Xizmat: Eslatmalar va Bildirishnomalar (Reminder & Task Manager)
+
+Ushbu xizmat muhim ishlar, to'lovlar, uchrashuvlar va rejalar uchun o'z vaqtida bildirishnoma yuboruvchi intellektual tizimdir.
+
+### 🌟 Asosiy Imkoniyatlar:
+- **🎙 Ovozli Eslatmalar (Speech-to-Text):** Uzun eslatmalarni klaviaturada yozib o'tirmasdan, audio (ovozli xabar) shaklida yuborishingiz mumkin. Bot ovozni o'zbek tilidagi aniq matnga o'giradi.
+- **❓ Ovozni Tasdiqlash ("To'g'rimi?"):** Ovoz matnga o'girilgach, bot foydalanuvchidan matn to'g'riligini tasdiqlashni so'raydi (`Ha, to'g'ri`, `Matnni tahrirlash`, `Qayta aytish`).
+- **🕒 O'zbekiston Vaqti (UTC+5 Asia/Tashkent):** Server vaqti qanday bo'lishidan qat'i nazar, barcha eslatmalar Toshkent vaqti bilan hisoblanadi.
+- **⚡️ Aqlli Vaqt Parsing:** Tabiiy va tezkor formatlarni tushunadi: `15 daqiqa`, `30m`, `1 soat`, `3h`, `1d`, `14:30`, `ertaga 09:00`, `25.10 18:00`.
+- **🔄 Takrorlanuvchi Rejalar:** Bir martalik, har kuni (shu vaqtda), har hafta yoki har oy takrorlanish tartibi.
+- **✅ Bajarildi:** Bildirishnoma kelganda `✅ Bajarildi` bosilsa, qayta eslatilmaydi, lekin bazadan darhol o'chirilmaydi.
+- **🗑 7 Kundan So'ng Avtomatik Tozalanish:** Bajarilgan eslatmalar aynan 7 kun o'tgach fondagi xizmat tomonidan avtomatik o'chiriladi.
+- **⏰ Keyinroq Eslatilsin (Snooze):** Bildirishnoma kelganda qulay tugmalar orqali keyinga surish imkoniyati (`+15 daqiqa`, `+1 soat`, `+3 soat`, `Ertaga 09:00`, `Ertaga shu vaqtda` yoki `Boshqa vaqt`).
+- **📋 Faol Eslatmalar va 7 Kunlik Tarix:** Faol eslatmalarni boshqarish, bekor qilish yoki bajarilganlarni bir zumda tozalash.
 
 ---
 
 ## 🛠 Texnologik Stek
 
-- **Til:** Python 3.11+
+- **Til:** Python 3.11+ (Python 3.14 qo'llab-quvvatlanadi)
 - **Bot Framework:** aiogram 3.x (Asinxron)
-- **Ma'lumotlar Bazasi:** SQLite + SQLAlchemy 2.0 (Async Engine via `aiosqlite`)
+- **Ma'lumotlar Bazasi:** SQLite / PostgreSQL + SQLAlchemy 2.0 (Async Engine via `aiosqlite`/`asyncpg`)
+- **Speech-to-Text (STT):** Google Speech Recognition (uz-UZ) va Groq Whisper Large V3
+- **Audio Konvertatsiya:** `ffmpeg` (OGG Opus to 16kHz WAV)
 - **Kriptografiya:** `cryptography` (Fernet AES-256), `hashlib` (SHA-256)
 - **Sozlamalar:** `pydantic-settings`, `python-dotenv`
 
@@ -35,25 +54,27 @@ Ushbu modul foydalanuvchilarning login, parol va maxfiy ma'lumotlarini bank dara
 
 ```
 Multiple-Service_bot/
-├── config/              # Sozlamalar va muhit o'zgaruvchilari
+├── config/                  # Sozlamalar va muhit o'zgaruvchilari
 │   └── settings.py
-├── core/                # Umumiy yadro tizimi
-│   ├── database/        # Baza modellari va asinxron sessiyalar
-│   ├── handlers/        # Asosiy menyu, xizmatlar, sozlamalar
-│   ├── keyboards/       # Umumiy navigatsiya tugmalari
-│   ├── middlewares/     # Foydalanuvchini avto-ro'yxatga olish
-│   └── tasks/           # 20 daqiqalik avto-tozalovchi xizmat
-├── services/            # Modulli xizmatlar
-│   └── password_manager/# 1-Xizmat: Parollar menejeri
-│       ├── handlers/    # Akkauntlar, kategoriyalar, PIN handlerlari
-│       ├── keyboards.py # Inline tugmalar
-│       ├── states.py    # FSM holatlari
-│       └── router.py    # Modul routeri
-├── utils/               # Kriptografiya va yordamchilar
+├── core/                    # Umumiy yadro tizimi
+│   ├── database/            # Baza modellari (User, Account, Reminder)
+│   ├── handlers/            # Asosiy menyu, xizmatlar, sozlamalar
+│   ├── keyboards/           # Umumiy navigatsiya tugmalari
+│   ├── middlewares/         # Anti-flood va user tracking
+│   └── tasks/               # Fondagi tozalovchi va reminder workerlar
+├── services/                # Modulli xizmatlar
+│   ├── password_manager/    # 1-Xizmat: Parollar seyfi
+│   └── reminder_service/    # 2-Xizmat: Eslatmalar va bildirishnomalar
+│       ├── handlers/        # Eslatma yaratish, harakatlar, ro'yxat
+│       ├── keyboards.py     # Eslatmalar tugmalari
+│       ├── states.py        # FSM holatlari
+│       ├── stt.py           # Ovozni matnga o'girish (STT)
+│       └── utils.py         # Toshkent vaqti va aqlli time parser
+├── utils/                   # Kriptografiya va xavfsizlik
 │   └── crypto.py
-├── main.py              # Dasturni ishga tushirish nuqtasi
-├── requirements.txt     # Kerakli kutubxonalar
-└── .env.example         # Muhit o'zgaruvchilari namunasi
+├── main.py                  # Dasturni ishga tushirish nuqtasi
+├── requirements.txt         # Kerakli kutubxonalar
+└── .env.example             # Muhit o'zgaruvchilari namunasi
 ```
 
 ---
@@ -90,7 +111,6 @@ python main.py
 
 ---
 
-
 ## 🐳 Docker & Docker Compose orqali Ishga Tushirish (Production)
 
 1. `.env` faylini sozlang:
@@ -113,7 +133,7 @@ docker-compose logs -f bot
 
 ## ☁️ AWS ga Joylash (Production Best Practices)
 
-- **AWS EC2 (t4g.micro yoki t3.micro):** Docker & Docker Compose o'rnatib, botni fon rejimida uzluksiz yurgizish.
+- **AWS EC2:** Docker & Docker Compose orqali botni fon rejimida uzluksiz yurgizish.
 - **AWS RDS PostgreSQL:** Ishonchli, avtomatik zaxiralanuvchi ma'lumotlar bazasi.
 - **AWS S3 Backup:** `scripts/backup_db.sh` orqali har kuni bazani S3 ga avtomatik zaxiralash.
 

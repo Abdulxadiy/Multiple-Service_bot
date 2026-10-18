@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     MAX_PIN_ATTEMPTS: int = 5       # Ketma-ket xato urinishlar limiti
     PIN_LOCKOUT_MINUTES: int = 10   # Bloklanish vaqti (daqiqa)
 
+    # Ovozni matnga o'girish (Speech-to-Text - ixtiyoriy yuqori aniqlikdagi Groq Whisper uchun)
+    GROQ_API_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=f"{BASE_DIR}/.env",
         env_file_encoding="utf-8",
@@ -66,4 +69,3 @@ class Settings(BaseSettings):
         return new_key
 
 settings = Settings()
-

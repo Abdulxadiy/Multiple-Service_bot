@@ -1,3 +1,5 @@
+import os
+import tempfile
 from datetime import timedelta
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -11,7 +13,8 @@ from services.reminder_service.keyboards import (
     get_reminder_main_keyboard,
     get_cancel_keyboard,
     get_time_presets_keyboard,
-    get_repeat_keyboard
+    get_repeat_keyboard,
+    get_voice_confirmation_keyboard
 )
 from services.reminder_service.utils import (
     get_now_tashkent,
@@ -20,6 +23,7 @@ from services.reminder_service.utils import (
     to_utc,
     TASHKENT_TZ
 )
+from services.reminder_service.stt import transcribe_voice
 
 create_router = Router(name="reminder_create_router")
 
@@ -31,6 +35,7 @@ async def handle_reminder_main_menu(callback: CallbackQuery, state: FSMContext):
         "📝 <b>Eslatmalar va Bildirishnomalar Xizmati</b>\n\n"
         "Kerakli ishlaringiz, to'lovlar yoki uchrashuvlarni rejalashtiring.\n"
         "Belgilangan vaqtda bot sizga eslatma yuboradi.\n\n"
+        "💡 <i>Uzun eslatmalarni ovozli xabar (audio) qilib yuborishingiz ham mumkin!</i>\n\n"
         "Quyidagi menyulardan birini tanlang:"
     )
     await callback.message.edit_text(text, reply_markup=get_reminder_main_keyboard(), parse_mode="HTML")
@@ -50,8 +55,9 @@ async def handle_new_reminder(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(ReminderState.waiting_for_content)
     text = (
-        "✍️ <b>Eslatma matnini yozing:</b>\n\n"
-        "<i>Eslatmoqchi bo'lgan ma'lumotingizni matn yoki rasm ko'rinishida yuboring.</i>"
+        "✍️ <b>Eslatmani yozing yoki ovozli xabar yuboring:</b>\n\n"
+        "🎙 <b>Ovoz bilan yozish:</b> Uzun eslatmalarni erinmasdan ovozli xabar orqali yuboring. "
+        "Bot uni o'zbekcha aniq matnga o'girib, sizdan tasdiqlashni so'raydi."
     )
     await callback.message.edit_text(text, reply_markup=get_cancel_keyboard(), parse_mode="HTML")
 
@@ -72,7 +78,110 @@ async def process_content_text(message: Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_time_presets_keyboard(), parse_mode="HTML")
 
-# 2. Rasm qabul qilish
+# 2. Ovozli xabarni qabul qilish va matnga o'girish (STT)
+@create_router.message(ReminderState.waiting_for_content, F.voice)
+async def process_content_voice(message: Message, state: FSMContext):
+    status_msg = await message.answer(
+        "⏳ <i>Ovozingiz tinglanmoqda va o'zbekcha matnga o'girilmoqda...</i>",
+        parse_mode="HTML"
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_ogg:
+        temp_ogg_path = temp_ogg.name
+
+    try:
+        # Ovozli faylni yuklab olish
+        await message.bot.download(message.voice, destination=temp_ogg_path)
+
+        # Ovozni matnga o'girish
+        transcribed_text = await transcribe_voice(temp_ogg_path)
+    finally:
+        if os.path.exists(temp_ogg_path):
+            try:
+                os.remove(temp_ogg_path)
+            except OSError:
+                pass
+
+    if not transcribed_text:
+        fail_text = (
+            "⚠️ <b>Ovozingizni aniqlab bo'lmadi.</b>\n\n"
+            "Iltimos, shovqinsizroq joyda biroz balandroq va aniqroq gapirib ko'ring "
+            "yoki matn ko'rinishida yozing:"
+        )
+        retry_kb = [
+            [get_cancel_keyboard().inline_keyboard[0][0]]
+        ]
+        from aiogram.types import InlineKeyboardMarkup
+        await status_msg.edit_text(fail_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=retry_kb), parse_mode="HTML")
+        return
+
+    # Muvaffaqiyatli o'girildi -> foydalanuvchidan tasdiqlashni so'raymiz
+    await state.update_data(
+        content_text=transcribed_text,
+        media_type="text",
+        media_file_id=None
+    )
+    await state.set_state(ReminderState.waiting_for_voice_confirm)
+
+    confirm_text = (
+        "🎙 <b>Ovozingiz matnga o'girildi:</b>\n\n"
+        f"«<b>{transcribed_text}</b>»\n\n"
+        "❓ <b>Matn to'g'rimi?</b>"
+    )
+    await status_msg.edit_text(confirm_text, reply_markup=get_voice_confirmation_keyboard(), parse_mode="HTML")
+
+# 3. Ovozli matnni tasdiqlash handlerlari
+@create_router.callback_query(ReminderState.waiting_for_voice_confirm, F.data == "voice_confirm:yes")
+async def handle_voice_confirm_yes(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("Matn tasdiqlandi!")
+    await state.set_state(ReminderState.waiting_for_time)
+
+    data = await state.get_data()
+    text = (
+        f"📌 <b>Eslatma matni:</b>\n"
+        f"«<i>{data.get('content_text', '')}</i>»\n\n"
+        f"⏰ <b>Qachon eslatilsin?</b>\n"
+        f"Quyidagi tayyor variantlardan birini tanlang yoki o'zingiz yozing:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_time_presets_keyboard(), parse_mode="HTML")
+
+@create_router.callback_query(ReminderState.waiting_for_voice_confirm, F.data == "voice_confirm:edit")
+async def handle_voice_confirm_edit(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(ReminderState.waiting_for_edit_content)
+    text = (
+        "✍️ <b>Matnni to'g'rilab yuboring:</b>\n\n"
+        "O'zingiz xohlagan aniq matnni xabar qilib yozing:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_cancel_keyboard(), parse_mode="HTML")
+
+@create_router.message(ReminderState.waiting_for_edit_content, F.text)
+async def process_edited_content_text(message: Message, state: FSMContext):
+    await state.update_data(
+        content_text=message.text,
+        media_type="text",
+        media_file_id=None
+    )
+    await state.set_state(ReminderState.waiting_for_time)
+    text = (
+        f"📌 <b>Eslatma matni yangilandi:</b>\n"
+        f"<i>«{message.text[:120]}»</i>\n\n"
+        f"⏰ <b>Qachon eslatilsin?</b>\n"
+        f"Quyidagi tayyor variantlardan birini tanlang yoki o'zingiz yozing:"
+    )
+    await message.answer(text, reply_markup=get_time_presets_keyboard(), parse_mode="HTML")
+
+@create_router.callback_query(ReminderState.waiting_for_voice_confirm, F.data == "voice_confirm:retry")
+async def handle_voice_confirm_retry(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(ReminderState.waiting_for_content)
+    text = (
+        "🎙 <b>Yangi ovozli xabarni yuboring:</b>\n\n"
+        "Ovoz bilan aniq gapirib yuboring, bot uni qaytadan matnga o'giradi."
+    )
+    await callback.message.edit_text(text, reply_markup=get_cancel_keyboard(), parse_mode="HTML")
+
+# 4. Rasm qabul qilish
 @create_router.message(ReminderState.waiting_for_content, F.photo)
 async def process_content_photo(message: Message, state: FSMContext):
     photo = message.photo[-1]
@@ -89,7 +198,7 @@ async def process_content_photo(message: Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_time_presets_keyboard(), parse_mode="HTML")
 
-# 3. Vaqt tanlash (Presetlar)
+# 5. Vaqt tanlash (Presetlar)
 @create_router.callback_query(ReminderState.waiting_for_time, F.data.startswith("rem_time:"))
 async def process_time_preset(callback: CallbackQuery, state: FSMContext):
     action = callback.data.split(":")[1]
@@ -133,7 +242,7 @@ async def process_time_preset(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.edit_text(text, reply_markup=get_repeat_keyboard(), parse_mode="HTML")
 
-# 4. Qo'lda vaqt yozish
+# 6. Qo'lda vaqt yozish
 @create_router.message(ReminderState.waiting_for_time, F.text)
 async def process_custom_time_text(message: Message, state: FSMContext):
     target_dt = parse_time_input(message.text)
@@ -158,7 +267,7 @@ async def process_custom_time_text(message: Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_repeat_keyboard(), parse_mode="HTML")
 
-# 5. Takroriylikni tanlash va bazaga saqlash
+# 7. Takroriylikni tanlash va bazaga saqlash
 @create_router.callback_query(ReminderState.waiting_for_repeat, F.data.startswith("rem_repeat:"))
 async def process_repeat_selection(callback: CallbackQuery, state: FSMContext):
     repeat_type = callback.data.split(":")[1]
