@@ -85,10 +85,9 @@ async def handle_finance_home(callback: CallbackQuery, state: FSMContext):
         f"🟢 Kirim: <b>+{format_money(total_income)}</b>\n"
         f"🔴 Chiqim: <b>-{format_money(total_expense)}</b>\n"
         f"📈 Sof farq: <b>{format_money(total_income - total_expense)}</b>\n\n"
-        "💡 <i>Tezkor xarajat yoki daromad kiritish uchun botga shunchaki yozing:</i>\n"
-        "• <code>35000 tushlik</code>\n"
-        "• <code>+2000000 oylik</code>\n"
-        "• <code>50k taxi</code>\n\n"
+        "💡 <b>Tezkor kiritish usullari:</b>\n"
+        "• ✍️ <b>Matn orqali:</b> <code>35000 tushlik</code> yoki <code>+2000000 oylik</code>\n"
+        "• 🎙 <b>Ovoz orqali:</b> Ovozli xabar yuboring (masalan: <i>«Tushlikka 35 ming ketdi»</i>)!\n\n"
         "Quyidagi menyulardan birini tanlang:"
     )
     await callback.message.edit_text(text, reply_markup=get_finance_main_keyboard(), parse_mode="HTML")

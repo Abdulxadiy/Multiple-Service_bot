@@ -104,3 +104,11 @@ def get_wallet_detail_keyboard(wallet_id: int) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🔙 Hamyonlar ro'yxatiga", callback_data="fin:wallets")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+def get_voice_finance_confirmation_keyboard() -> InlineKeyboardMarkup:
+    """Ovozli moliya xabari tahlil qilinganda tasdiqlash tugmalari"""
+    keyboard = [
+        [InlineKeyboardButton(text="✅ Ha, hamyonga saqlansin", callback_data="fin_v_save")],
+        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="fin:cancel")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)

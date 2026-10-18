@@ -209,3 +209,146 @@ async def handle_quick_money_input(message: Message, state: FSMContext):
         f"{note_line}"
     )
     await message.answer(text, reply_markup=get_finance_main_keyboard(), parse_mode="HTML")
+
+import os
+import tempfile
+from services.reminder_service.stt import transcribe_voice
+from services.finance_service.utils import extract_financial_from_text
+from services.finance_service.keyboards import get_voice_finance_confirmation_keyboard
+
+@transaction_router.message(F.voice)
+async def handle_voice_finance_input(message: Message, state: FSMContext):
+    """Ovozli xabar orqali xarajat yoki daromadni kiritish"""
+    current_state = await state.get_state()
+    # Agar boshqa biror aniq jarayonda bo'lsa (masalan hamyon nomi kiritish), e'tiborsiz qoldirish
+    if current_state in [FinanceState.waiting_for_wallet_name, FinanceState.waiting_for_set_balance]:
+        return
+
+    status_msg = await message.answer(
+        "⏳ <i>Ovozingiz tinglanmoqda va tahlil qilinmoqda...</i>",
+        parse_mode="HTML"
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_ogg:
+        temp_ogg_path = temp_ogg.name
+
+    try:
+        await message.bot.download(message.voice, destination=temp_ogg_path)
+        transcribed_text = await transcribe_voice(temp_ogg_path)
+    finally:
+        if os.path.exists(temp_ogg_path):
+            try:
+                os.remove(temp_ogg_path)
+            except OSError:
+                pass
+
+    if not transcribed_text:
+        await status_msg.edit_text(
+            "⚠️ <b>Ovozingizni aniqlab bo'lmadi.</b>\n\n"
+            "Iltimos, shovqinsizroq joyda biroz balandroq va aniqroq gapirib ko'ring yoki matn sifatida yozing.",
+            reply_markup=get_finance_main_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    amount, t_type, category, note = extract_financial_from_text(transcribed_text)
+
+    async with async_session_maker() as session:
+        wallets = await ensure_default_wallets(session, message.from_user.id, message.from_user.username)
+        wallet = next((w for w in wallets if w.is_default), wallets[0])
+
+    if not amount or amount <= 0:
+        # Summa aniqlanmadi, lekin mavzu tushunildi
+        await state.set_state(FinanceState.waiting_for_amount)
+        await state.update_data(
+            transaction_type=t_type,
+            category=category,
+            preliminary_note=transcribed_text,
+            wallet_id=wallet.id
+        )
+        await status_msg.edit_text(
+            f"🎙 <b>Ovozingiz:</b> «<i>{transcribed_text}</i>»\n"
+            f"📂 <b>Kategoriya:</b> {category}\n\n"
+            "⚠️ <i>Lekin qancha summa ekanligi aniqlanmadi.</i>\n\n"
+            "Summani yozing (masalan: <code>35000</code> yoki <code>50k</code>):",
+            reply_markup=get_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    # Summa muvaffaqiyatli aniqlandi -> Tasdiqlashni so'raymiz
+    await state.update_data(
+        amount=amount,
+        transaction_type=t_type,
+        category=category,
+        wallet_id=wallet.id,
+        voice_note=transcribed_text
+    )
+
+    type_icon = "🟢 Kirim" if t_type == "income" else "🔴 Chiqim"
+    sign = "+" if t_type == "income" else "-"
+
+    confirm_text = (
+        "🎙 <b>Ovozli xabaringiz tushunildi:</b>\n\n"
+        f"🗣 «<i>{transcribed_text}</i>»\n\n"
+        f"💵 <b>Miqdor:</b> <code>{sign}{format_money(amount)}</code>\n"
+        f"📊 <b>Turi:</b> {type_icon}\n"
+        f"📂 <b>Kategoriya:</b> {category}\n"
+        f"💳 <b>Hamyon:</b> {wallet.name}\n\n"
+        "❓ <b>Hamyonga saqlansinmi?</b>"
+    )
+    await status_msg.edit_text(confirm_text, reply_markup=get_voice_finance_confirmation_keyboard(), parse_mode="HTML")
+
+@transaction_router.callback_query(F.data == "fin_v_save")
+async def handle_voice_finance_save(callback: CallbackQuery, state: FSMContext):
+    """Ovozli kiritilgan moliyani tasdiqlash va saqlash"""
+    data = await state.get_data()
+    if not data or "amount" not in data:
+        await callback.answer("Ma'lumot topilmadi.", show_alert=True)
+        return
+
+    await state.clear()
+    await callback.answer("✅ Saqlandi!")
+
+    user_id = callback.from_user.id
+    amount = data["amount"]
+    t_type = data["transaction_type"]
+    wallet_id = data["wallet_id"]
+    category = data["category"]
+    note = data.get("voice_note")
+
+    async with async_session_maker() as session:
+        wallet = await session.get(Wallet, wallet_id)
+        if not wallet:
+            wallets = await ensure_default_wallets(session, user_id, callback.from_user.username)
+            wallet = wallets[0]
+
+        if t_type == "income":
+            wallet.balance += amount
+        else:
+            wallet.balance -= amount
+
+        tx = Transaction(
+            user_id=user_id,
+            wallet_id=wallet.id,
+            type=t_type,
+            amount=amount,
+            category=category,
+            note=note
+        )
+        session.add(tx)
+        await session.commit()
+        new_balance = wallet.balance
+        wallet_name = wallet.name
+
+    type_icon = "🟢 Kirim" if t_type == "income" else "🔴 Chiqim"
+    sign = "+" if t_type == "income" else "-"
+
+    success_text = (
+        f"✅ <b>{type_icon} muvaffaqiyatli saqlandi!</b>\n\n"
+        f"💵 <b>Miqdor:</b> <code>{sign}{format_money(amount)}</code>\n"
+        f"📂 <b>Kategoriya:</b> {category}\n"
+        f"💳 <b>Hamyon:</b> {wallet_name} (Qoldiq: <code>{format_money(new_balance)}</code>)\n"
+        f"📝 <b>Ovoz:</b> «<i>{note}</i>»"
+    )
+    await callback.message.edit_text(success_text, reply_markup=get_finance_main_keyboard(), parse_mode="HTML")

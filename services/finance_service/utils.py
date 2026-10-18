@@ -123,3 +123,36 @@ def get_period_boundaries(period: str) -> tuple[datetime, datetime]:
         end_local = now
 
     return to_utc(start_local), to_utc(end_local)
+
+def extract_financial_from_text(sentence: str) -> tuple[int | None, str, str, str]:
+    """
+    O'zbek tilidagi tabiiy jumlalardan moliya ma'lumotlarini ajratib oladi.
+    Qaytaradi: (amount, transaction_type, category, note)
+    Misol:
+    - 'Tushlikka 35 ming ketdi' -> (35000, 'expense', '🍔 Oziq-ovqat', 'Tushlikka 35 ming ketdi')
+    - 'Oylik 3 million tushdi' -> (3000000, 'income', '💼 Oylik maosh / Avans', 'Oylik 3 million tushdi')
+    """
+    text = sentence.lower().strip()
+
+    income_indicators = ["tushdi", "ish haqi", "avans", "foyda", "maosh", "daromad", "keldi", "kirim"]
+    expense_indicators = ["ketdi", "ishlatdim", "sarfladim", "to'ladim", "toladim", "berdim", "harjladim", "chiqim", "sotib oldim"]
+
+    t_type = "expense"
+    if any(iv in text for iv in income_indicators):
+        t_type = "income"
+
+    # Raqam va birlikni topish
+    num_match = re.search(r"(\d+(?:[\s.,]\d+)*)(?:\s*(k|ming|mln|million)\b)?(?:\s*so['’`]?m\b)?", text)
+    amount = None
+    if num_match:
+        digits_str = re.sub(r"[\s.,]", "", num_match.group(1))
+        val = int(digits_str)
+        unit = (num_match.group(2) or "").lower()
+        if unit in ["k", "ming"]:
+            val *= 1_000
+        elif unit in ["mln", "million"]:
+            val *= 1_000_000
+        amount = val
+
+    category = detect_category(text, t_type)
+    return amount, t_type, category, sentence.strip()
