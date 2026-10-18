@@ -10,7 +10,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/Release-v2.0.0-success?style=for-the-badge)](https://github.com/Abdulxadiy/Multiple-Service_bot/releases)
+[![Latest Release](https://img.shields.io/badge/Release-v2.1.0-success?style=for-the-badge)](https://github.com/Abdulxadiy/Multiple-Service_bot/releases)
 
 <p align="center">
   <a href="#-haqida">Haqida</a> •
@@ -64,6 +64,8 @@ Vaqt va rejalarni o'z vaqtida bildirishnoma bilan eslatuvchi intellektual tizim.
 Shaxsiy byudjet, daromadlar va xarajatlarni engil va zavq bilan yuritish xizmati.
 - **🎙 AI Ovozli Boshqaruv:** Xarajat va daromadlarni ovozli xabar bilan aytish: *«Tushlikka 35 ming ketdi»*, *«Oylik 3 million tushdi»* — bot ovozni tushunadi, summani ajratadi va hamyonga yozadi!
 - **💳 Ko'p Hamyonli Tizim:** `💳 Karta`, `💵 Naqd pul`, `🏦 Jamg'arma` kabi alohida hamyonlar va umumiy balans.
+- **🏷 Moslashuvchan Kategoriyalar:** Kirim va chiqim kategoriyalarini erkin yaratish, nomini tahrirlash, o'chirish va «🔄 Boshqa» bosilganda avtomatik yangi kategoriya sifatida saqlab borish.
+- **✍️ Ixtiyoriy Izohlar:** Kirim va chiqimlarda izoh kiritish yoki `[ ➡️ Izohsiz saqlash ]` tugmasi orqali tezkor saqlash.
 - **⚡️ Bir Zumda Kiritish (Instant Input):**
   - `35000 tushlik` ➡️ 🍔 Oziq-ovqat chiqimi (35 000 so'm)
   - `+2500000 oylik` ➡️ 💼 Maosh daromadi (+2 500 000 so'm)
