@@ -16,10 +16,8 @@ def get_services_inline_keyboard() -> InlineKeyboardMarkup:
     """Xizmatlar ro'yxati inline tugmalari"""
     keyboard = [
         [InlineKeyboardButton(text="🔐 Login va Parollar", callback_data="svc:passwords")],
-        [
-            InlineKeyboardButton(text="📝 Eslatmalar (Yaqinda)", callback_data="svc:soon_notes"),
-            InlineKeyboardButton(text="💱 Valyuta (Yaqinda)", callback_data="svc:soon_rates")
-        ],
+        [InlineKeyboardButton(text="📝 Eslatmalar va Bildirishnomalar", callback_data="svc:reminders")],
+        [InlineKeyboardButton(text="💱 Valyuta kurslari (Yaqinda)", callback_data="svc:soon_rates")],
         [InlineKeyboardButton(text="🏠 Asosiy menyu", callback_data="nav:home")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
