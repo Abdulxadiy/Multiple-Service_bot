@@ -8,11 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Ishchi papka
 WORKDIR /app
 
-# Tizim paketlarini yangilash va kerakli kutubxonalarni o'rnatish
+# Tizim paketlarini yangilash va kerakli kutubxonalarni (jumladan audio uchun ffmpeg) o'rnatish
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Talablar faylini nusxalash va o'rnatish
