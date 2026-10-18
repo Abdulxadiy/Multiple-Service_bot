@@ -11,7 +11,9 @@ from core.middlewares.throttling import ThrottlingMiddleware
 from core.middlewares.user_middleware import UserTrackingMiddleware
 from core.handlers.base import base_router
 from services.password_manager.router import password_manager_router
+from services.reminder_service.router import reminder_router
 from core.tasks.cleaner import auto_delete_worker
+from core.tasks.reminder_worker import reminder_worker
 
 # Loglarni sozlash
 logging.basicConfig(
@@ -67,10 +69,11 @@ async def main():
     # 5. Modulli routerlarni ulash
     dp.include_router(base_router)
     dp.include_router(password_manager_router)
+    dp.include_router(reminder_router)
 
-    # 6. 20 daqiqalik avto-o'chirish fondagi xizmatini ishga tushirish
+    # 6. Fondagi xizmatlarni ishga tushirish
     cleaner_task = asyncio.create_task(auto_delete_worker(bot))
-
+    reminder_task = asyncio.create_task(reminder_worker(bot))
 
     logger.info("Multiple-Service Bot tayyor va polling rejimida ishga tushmoqda...")
 
@@ -79,6 +82,7 @@ async def main():
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         cleaner_task.cancel()
+        reminder_task.cancel()
         await bot.session.close()
         await engine.dispose()
         logger.info("Bot to'xtatildi.")

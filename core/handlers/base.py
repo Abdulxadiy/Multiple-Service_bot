@@ -19,7 +19,9 @@ async def handle_start(message: Message):
         f"👋 Assalomu alaykum, <b>{user_name}</b>!\n\n"
         f"<b>Multiple-Service Bot</b>ga xush kelibsiz.\n"
         f"Ushbu bot orqali siz turli xil foydali xizmatlardan bitta joyda foydalanishingiz mumkin.\n\n"
-        f"Hozirda faol xizmat: 🔐 <b>Login va Parollar Menejeri</b> (shaxsiy seyf).\n\n"
+        f"Hozirda faol xizmatlar:\n"
+        f"🔐 <b>Login va Parollar Seyfi</b> (shaxsiy maxfiy xotira)\n"
+        f"📝 <b>Eslatmalar va Bildirishnomalar</b> (reja va eslatmalar)\n\n"
         f"Boshlash uchun quyidagi menyulardan birini tanlang:"
     )
     await message.answer(
@@ -81,11 +83,14 @@ async def handle_help_menu(message: Message):
     text = (
         "ℹ️ <b>Multiple-Service Bot haqida ma'lumot:</b>\n\n"
         "🔐 <b>Login va Parollar Seyfi:</b>\n"
-        "• Barcha parollaringiz AES-256 xalqaro shifrlash standarti orqali himoyalanadi.\n"
-        "• Har bir foydalanuvchining ma'lumotlari to'liq alohida saqlanadi.\n"
-        "• PIN kod o'rnatilgach, parollaringizni faqat siz ko'ra olasiz.\n"
-        "• Ko'rilgan maxfiy login va parollar 20 daqiqadan so'ng chatdan avtomatik yo'q qilinadi.\n"
-        "• Bir marta bosishda nusxalash (`monospaced`) qulayligi mavjud.\n\n"
+        "• AES-256 xalqaro shifrlash standarti orqali parollaringiz xavfsiz saqlanadi.\n"
+        "• PIN kod o'rnatilgach, parollarni faqat siz ochasiz.\n"
+        "• Ko'rilgan maxfiy login va parollar 20 daqiqadan so'ng chatdan avto-o'chadi.\n\n"
+        "📝 <b>Eslatmalar va Bildirishnomalar:</b>\n"
+        "• Matn, ovozli xabar yoki rasm shaklida eslatma qo'shish.\n"
+        "• O'z vaqtida bildirishnoma yuborish.\n"
+        "• '✅ Bajarildi' bosilganda 7 kundan so'ng avtomatik tozalanadi.\n"
+        "• '⏰ Keyinroq eslatilsin' orqali 15 daqiqa, 1 soat, 3 soat yoki ertangi kunga surish imkoniyati.\n\n"
         "Savol yoki takliflar uchun adminga murojaat qilishingiz mumkin."
     )
     await message.answer(text, parse_mode="HTML")
