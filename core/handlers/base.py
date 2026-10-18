@@ -22,7 +22,8 @@ async def handle_start(message: Message):
         f"Hozirda faol xizmatlar:\n"
         f"🔐 <b>Login va Parollar Seyfi</b> (shaxsiy maxfiy xotira)\n"
         f"📝 <b>Eslatmalar va Bildirishnomalar</b> (reja va eslatmalar)\n"
-        f"💰 <b>Moliya va Hamyon</b> (kirim-chiqim va balans hisobi)\n\n"
+        f"💰 <b>Moliya va Hamyon</b> (kirim-chiqim va balans hisobi)\n"
+        f"💱 <b>Valyuta kurslari (CBU)</b> (Markaziy Bank rasmiy kurslari)\n\n"
         f"Boshlash uchun quyidagi menyulardan birini tanlang:"
     )
     await message.answer(
@@ -91,11 +92,14 @@ async def handle_help_menu(message: Message):
         "• Matn, ovozli xabar yoki rasm shaklida eslatma qo'shish.\n"
         "• O'z vaqtida bildirishnoma yuborish.\n"
         "• '✅ Bajarildi' bosilganda 7 kundan so'ng avtomatik tozalanadi.\n"
-        "• '⏰ Keyinroq eslatilsin' orqali 15 daqiqa, 1 soat, 3 soat yoki ertangi kunga surish imkoniyati.\n\n"
+        "• '⏰ Keyinroq eslatilsin' orqali vaqtni surish imkoniyati.\n\n"
         "💰 <b>Moliya va Hamyon:</b>\n"
         "• Karta va Naqd pul hamyonlaridagi balansni yuritish.\n"
-        "• Tezkor xarajat yozish (masalan: <code>35000 tushlik</code>, <code>+500000 oylik</code>).\n"
-        "• Kunlik, haftalik va oylik batafsil hisobotlar va tahlil.\n\n"
+        "• Ovoz yoki matn orqali tezkor xarajat yozish (masalan: <code>35000 tushlik</code>).\n"
+        "• Kunlik, haftalik va oylik hisobotlar va tahlil.\n\n"
+        "💱 <b>Valyuta kurslari (CBU):</b>\n"
+        "• O'zbekiston Markaziy Bankining rasmiy kurslari (USD, EUR, RUB, KZT, TRY).\n"
+        "• Avtomatik yangilanish va qulay kalkulyator.\n\n"
         "Savol yoki takliflar uchun adminga murojaat qilishingiz mumkin."
     )
     await message.answer(text, parse_mode="HTML")

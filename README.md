@@ -1,4 +1,4 @@
-# 🤖 Multiple-Service Telegram Bot (v1.9.0)
+# 🤖 Multiple-Service Telegram Bot (v2.0.0)
 
 **Multiple-Service Bot** — bir nechta mustaqil foydali xizmatlarni bitta qulay platformada birlashtiruvchi ko'p xizmatli Telegram bot. Loyiha kengayuvchan, toza va modulli (Modular Monolith) arxitekturada qurilgan.
 
@@ -43,8 +43,9 @@ Ushbu xizmat muhim ishlar, to'lovlar, uchrashuvlar va rejalar uchun o'z vaqtida 
 Shaxsiy byudjet, daromadlar va xarajatlarni oson va qulay yuritish xizmati.
 
 ### 💵 Asosiy Xususiyatlar:
+- **🎙 AI Ovozli Boshqaruv:** Xarajat va daromadlarni shunchaki ovozli xabar qilib aytish (masalan: *«Tushlikka 35 ming ketdi»*, *«Oylik 3 million tushdi»*).
 - **💳 Ko'p Hamyonli Tizim:** `💳 Karta`, `💵 Naqd pul`, `🏦 Jamg'arma` kabi alohida hamyonlar va umumiy balans nazorati.
-- **⚡️ Tezkor Kiritish (Instant Smart Input):** Menyularda aylanmasdan, shunchaki xabar yozish orqali xarajat/daromad qo'shish:
+- **⚡️ Tezkor Kiritish (Instant Smart Input):** Shunchaki xabar yozish orqali xarajat/daromad qo'shish:
   - `35000 tushlik` ➡️ 🍔 Oziq-ovqat chiqimi (35 000 so'm)
   - `+2500000 oylik` ➡️ 💼 Maosh daromadi (+2 500 000 so'm)
   - `50k taxi` ➡️ 🚕 Transport chiqimi (50 000 so'm)
@@ -54,11 +55,25 @@ Shaxsiy byudjet, daromadlar va xarajatlarni oson va qulay yuritish xizmati.
 
 ---
 
+## 💱 4-Xizmat: Valyuta kurslari va Konvertor (CBU Rates & Calculator)
+
+O'zbekiston Respublikasi Markaziy Banki (CBU) rasmiy kurslari asosida ishlovchi jonli valyuta moduli.
+
+### 🌐 Imkoniyatlar:
+- **🏦 Rasmiy Markaziy Bank Kurslari:** USD, EUR, RUB, KZT, TRY, GBP, AED va CNY kurslari har kuni avtomatik yangilanadi.
+- **📈 O'zgarish Dinamikasi:** Har bir valyuta kursi kechagiga nisbatan qanchaga ko'tarilgani yoki tushgani ko'rinib turadi (`+44.25` / `-12.50`).
+- **🧮 Valyuta Kalkulyatori:** Xorijiy valyutani so'mga yoki so'mni valyutaga bir zumda o'girib hisoblash.
+- **⚡️ Tezkor Xabar Tahlili:** Chatda shunchaki `100$`, `50 eur` yoki `5000 rub` deb yozilsa, bot darhol so'mdagi qiymatini hisoblab beradi.
+- **⚡️ 1 Soatlik Aqlli Kesh (Smart Cache):** Server va bot tezkorligini ta'minlash uchun CBU ma'lumotlari keshlanadi va ortiqcha kutishlarning oldi olinadi.
+
+---
+
 ## 🛠 Texnologik Stek
 
 - **Til:** Python 3.11+ (Python 3.14 qo'llab-quvvatlanadi)
 - **Bot Framework:** aiogram 3.x (Asinxron)
 - **Ma'lumotlar Bazasi:** SQLite / PostgreSQL + SQLAlchemy 2.0 (Async Engine via `aiosqlite`/`asyncpg`)
+- **Tashqi API:** CBU JSON API (Markaziy Bank rasmiy valyuta API)
 - **Speech-to-Text (STT):** Google Speech Recognition (uz-UZ) va Groq Whisper Large V3
 - **Audio Konvertatsiya:** `ffmpeg` (OGG Opus to 16kHz WAV)
 - **Kriptografiya:** `cryptography` (Fernet AES-256), `hashlib` (SHA-256)
@@ -71,87 +86,17 @@ Shaxsiy byudjet, daromadlar va xarajatlarni oson va qulay yuritish xizmati.
 ```
 Multiple-Service_bot/
 ├── config/                  # Sozlamalar va muhit o'zgaruvchilari
-│   └── settings.py
-├── core/                    # Umumiy yadro tizimi
-│   ├── database/            # Baza modellari (User, Account, Reminder, Wallet, Transaction)
-│   ├── handlers/            # Asosiy menyu, xizmatlar, sozlamalar
-│   ├── keyboards/           # Umumiy navigatsiya tugmalari
-│   ├── middlewares/         # Anti-flood va user tracking
-│   └── tasks/               # Fondagi tozalovchi va reminder workerlar
+├── core/                    # Umumiy yadro tizimi (Baza, Middleware, Cleaner)
 ├── services/                # Modulli xizmatlar
 │   ├── password_manager/    # 1-Xizmat: Parollar seyfi
-│   ├── reminder_service/    # 2-Xizmat: Eslatmalar va bildirishnomalar
-│   └── finance_service/     # 3-Xizmat: Moliya va hamyon
-│       ├── handlers/        # Hamyon, kirim-chiqim, hisobotlar
-│       ├── keyboards.py     # Moliya tugmalari
-│       ├── states.py        # FSM holatlari
-│       └── utils.py         # Summa parseri, kategoriyalar, formatlash
+│   ├── reminder_service/    # 2-Xizmat: Eslatmalar va bildirishnomalar (STT)
+│   ├── finance_service/     # 3-Xizmat: Moliya va hamyon
+│   └── currency_service/    # 4-Xizmat: Valyuta kurslari va kalkulyator
 ├── utils/                   # Kriptografiya va xavfsizlik
-│   └── crypto.py
 ├── main.py                  # Dasturni ishga tushirish nuqtasi
 ├── requirements.txt         # Kerakli kutubxonalar
 └── .env.example             # Muhit o'zgaruvchilari namunasi
 ```
-
----
-
-## 🚀 O'rnatish va Ishga Tushirish
-
-### 1. Loyihani klonlash:
-```bash
-git clone https://github.com/Abdulxadiy/Multiple-Service_bot.git
-cd Multiple-Service_bot
-```
-
-### 2. Virtual muhit yaratish va kutubxonalarni o'rnatish:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3. Muhit o'zgaruvchilarini sozlash:
-`.env.example` dan nusxa olib `.env` yarating:
-```bash
-cp .env.example .env
-```
-`.env` fayliga Telegram [@BotFather](https://t.me/BotFather) dan olingan bot tokeningizni kiriting:
-```env
-BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
-```
-
-### 4. Botni ishga tushirish (Lokal rejimda):
-```bash
-python main.py
-```
-
----
-
-## 🐳 Docker & Docker Compose orqali Ishga Tushirish (Production)
-
-1. `.env` faylini sozlang:
-```bash
-cp .env.example .env
-nano .env # BOT_TOKEN, ENCRYPTION_KEY va parollarni kiriting
-```
-
-2. Konteynerlarni bir buyruq bilan ko'taring:
-```bash
-docker-compose up -d --build
-```
-
-3. Loglarni kuzatish:
-```bash
-docker-compose logs -f bot
-```
-
----
-
-## ☁️ AWS ga Joylash (Production Best Practices)
-
-- **AWS EC2:** Docker & Docker Compose orqali botni fon rejimida uzluksiz yurgizish.
-- **AWS RDS PostgreSQL:** Ishonchli, avtomatik zaxiralanuvchi ma'lumotlar bazasi.
-- **AWS S3 Backup:** `scripts/backup_db.sh` orqali har kuni bazani S3 ga avtomatik zaxiralash.
 
 ---
 
