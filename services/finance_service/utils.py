@@ -3,22 +3,63 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from services.reminder_service.utils import TASHKENT_TZ, get_now_tashkent, to_utc
 
-EXPENSE_CATEGORIES = [
+DEFAULT_EXPENSE_CATEGORIES = [
     "🍔 Oziq-ovqat",
     "🚕 Transport / Yoqilg'i",
     "🏠 Uy va Kommunal",
     "🛍 Xaridlar va Kiyim",
     "💊 Dorixona va Sog'liq",
-    "☕️ Kafe va Ko'ngilochar",
-    "🔄 Boshqa xarajat"
+    "☕️ Kafe va Ko'ngilochar"
 ]
 
-INCOME_CATEGORIES = [
+DEFAULT_INCOME_CATEGORIES = [
     "💼 Oylik maosh / Avans",
     "📈 Biznes / Savdo",
-    "🎁 Sovg'a / Mukofot",
-    "🔄 Boshqa daromad"
+    "🎁 Sovg'a / Mukofot"
 ]
+
+EXPENSE_CATEGORIES = DEFAULT_EXPENSE_CATEGORIES + ["🔄 Boshqa xarajat"]
+INCOME_CATEGORIES = DEFAULT_INCOME_CATEGORIES + ["🔄 Boshqa daromad"]
+
+async def ensure_default_finance_categories(session, user_id: int) -> None:
+    """Foydalanuvchida kategoriyalar yo'q bo'lsa, standart kategoriyalarni yaratish"""
+    from core.database.models import FinanceCategory
+    from sqlalchemy import select
+
+    res = await session.execute(
+        select(FinanceCategory.id).where(FinanceCategory.user_id == user_id).limit(1)
+    )
+    if res.scalar() is None:
+        new_cats = []
+        for cat_name in DEFAULT_EXPENSE_CATEGORIES:
+            new_cats.append(FinanceCategory(user_id=user_id, type="expense", name=cat_name))
+        for cat_name in DEFAULT_INCOME_CATEGORIES:
+            new_cats.append(FinanceCategory(user_id=user_id, type="income", name=cat_name))
+        session.add_all(new_cats)
+        await session.commit()
+
+async def get_user_finance_categories(session, user_id: int, cat_type: str) -> list:
+    """Foydalanuvchining ma'lum turdagi kategoriyalarini olish"""
+    from core.database.models import FinanceCategory
+    from sqlalchemy import select
+
+    await ensure_default_finance_categories(session, user_id)
+    res = await session.execute(
+        select(FinanceCategory)
+        .where(FinanceCategory.user_id == user_id, FinanceCategory.type == cat_type)
+        .order_by(FinanceCategory.id.asc())
+    )
+    return list(res.scalars().all())
+
+def sanitize_category_name(name: str) -> str:
+    """Kategoriya nomini tozalash va chiroyli ko'rinishga keltirish"""
+    cleaned = name.strip()[:50]
+    if not cleaned:
+        return "📁 Boshqa"
+    first_char = cleaned[0]
+    if ord(first_char) < 128:
+        return f"📁 {cleaned}"
+    return cleaned
 
 CATEGORY_KEYWORDS = {
     "🍔 Oziq-ovqat": ["tushlik", "non", "ovqat", "bozor", "go'sht", "gosht", "supermarket", "osh", "somsa", "magazin", "shakar", "yog", "kartoshka", "sabzi"],
@@ -31,9 +72,15 @@ CATEGORY_KEYWORDS = {
     "📈 Biznes / Savdo": ["savdo", "foyda", "biznes", "klient", "mijoz", "zakaz", "sotuv"]
 }
 
-def format_money(amount: int) -> str:
+def format_money(amount: int | float | None) -> str:
     """Raqamni chiroyli so'm formatiga o'tkazish (masalan: 1 250 000 so'm)"""
-    formatted = f"{amount:,}".replace(",", " ")
+    if amount is None:
+        amount = 0
+    try:
+        val = int(round(float(amount)))
+    except (ValueError, TypeError):
+        val = 0
+    formatted = f"{val:,}".replace(",", " ")
     return f"{formatted} so'm"
 
 def parse_money_input(text: str) -> tuple[int | None, str | None, str]:
