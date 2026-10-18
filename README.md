@@ -10,7 +10,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/Release-v2.1.0-success?style=for-the-badge)](https://github.com/Abdulxadiy/Multiple-Service_bot/releases)
+[![Latest Release](https://img.shields.io/badge/Release-v2.2.0-success?style=for-the-badge)](https://github.com/Abdulxadiy/Multiple-Service_bot/releases)
 
 <p align="center">
   <a href="#-haqida">Haqida</a> •
