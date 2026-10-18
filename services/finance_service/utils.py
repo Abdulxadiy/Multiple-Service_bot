@@ -171,6 +171,47 @@ def get_period_boundaries(period: str) -> tuple[datetime, datetime]:
 
     return to_utc(start_local), to_utc(end_local)
 
+UZ_NUM_WORDS = {
+    'bir': 1, 'ikki': 2, 'uch': 3, "to'rt": 4, 'tort': 4, 'besh': 5,
+    'olti': 6, 'yetti': 7, 'sakkiz': 8, "to'qqiz": 9, 'toqqiz': 9,
+    "o'n": 10, 'on': 10, 'yigirma': 20, "o'ttiz": 30, 'ottiz': 30,
+    'qirq': 40, 'ellik': 50, 'oltmish': 60, 'yetmish': 70, 'sakson': 80, "to'qson": 90, 'toqson': 90,
+}
+
+def parse_uzbek_words_to_number(text: str) -> int | None:
+    """O'zbek tilidagi so'z ko'rinishidagi sonlarni raqamga o'giradi (masalan: 'o'ttiz besh ming' -> 35000)"""
+    words = re.findall(r"[a-zA-Z'ʻʼ`]+", text.lower())
+    if not words:
+        return None
+
+    total = 0
+    current = 0
+    found_any = False
+
+    for w in words:
+        w_norm = re.sub(r"[ʻʼ`]", "'", w)
+        if w_norm in UZ_NUM_WORDS:
+            current += UZ_NUM_WORDS[w_norm]
+            found_any = True
+        elif w_norm == 'yuz':
+            current = (current if current > 0 else 1) * 100
+            found_any = True
+        elif w_norm in ['ming', 'k']:
+            total += (current if current > 0 else 1) * 1000
+            current = 0
+            found_any = True
+        elif w_norm in ['mln', 'million']:
+            total += (current if current > 0 else 1) * 1000000
+            current = 0
+            found_any = True
+        elif w_norm == 'milliard':
+            total += (current if current > 0 else 1) * 1000000000
+            current = 0
+            found_any = True
+
+    total += current
+    return total if (found_any and total > 0) else None
+
 def extract_financial_from_text(sentence: str) -> tuple[int | None, str, str, str]:
     """
     O'zbek tilidagi tabiiy jumlalardan moliya ma'lumotlarini ajratib oladi.
@@ -200,6 +241,9 @@ def extract_financial_from_text(sentence: str) -> tuple[int | None, str, str, st
         elif unit in ["mln", "million"]:
             val *= 1_000_000
         amount = val
+
+    if amount is None:
+        amount = parse_uzbek_words_to_number(text)
 
     category = detect_category(text, t_type)
     return amount, t_type, category, sentence.strip()

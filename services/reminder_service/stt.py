@@ -7,6 +7,14 @@ from config.settings import settings
 
 logger = logging.getLogger("stt_service")
 
+# Whisper uchun o'zbek tili lug'ati va kontekst prompti
+WHISPER_UZBEK_PROMPT = (
+    "O'zbekcha nutq: 35000 so'm, 50k, 100 ming, 1.5 mln so'm, "
+    "tushlik, taxi, bozor, go'sht, supermarket, kommunal, oylik maosh, avans, "
+    "ertaga soat 15:00 da, eslatma, uchrashuv, xarajat, kirim, chiqim, "
+    "karta, naqd pul, dori, do'kon, kiyim, kafe, oshxona."
+)
+
 async def convert_to_wav(input_path: str, output_path: str) -> bool:
     """ffmpeg yordamida audio faylni 16kHz mono WAV formatiga o'tkazish"""
     cmd = [
@@ -29,27 +37,52 @@ async def convert_to_wav(input_path: str, output_path: str) -> bool:
         return False
 
 async def transcribe_with_groq(file_path: str, api_key: str) -> str | None:
-    """Groq Whisper-large-v3 orqali o'zbek tilidagi ovozni matnga o'girish"""
+    """
+    Groq Whisper orqali o'zbek tilidagi ovozni matnga o'girish.
+    Birinchi navbatda eng yuqori sifatli 'whisper-large-v3',
+    muammo bo'lsa 'whisper-large-v3-turbo' modeliga murojaat qiladi.
+    """
     try:
         from groq import AsyncGroq
         client = AsyncGroq(api_key=api_key)
-        
+
         with open(file_path, "rb") as audio_file:
+            audio_bytes = audio_file.read()
+
+        filename = Path(file_path).name
+
+        try:
             response = await client.audio.transcriptions.create(
-                file=(Path(file_path).name, audio_file.read()),
+                file=(filename, audio_bytes),
                 model="whisper-large-v3",
+                prompt=WHISPER_UZBEK_PROMPT,
                 language="uz",
+                temperature=0.0,
                 response_format="text"
             )
-        text = str(response).strip()
-        logger.info(f"Groq STT muvaffaqiyatli yakunlandi: {text[:50]}...")
-        return text
+            text = str(response).strip()
+            logger.info(f"Groq Whisper-large-v3 muvaffaqiyatli yakunlandi: {text[:60]}...")
+            return text
+        except Exception as e:
+            logger.warning(f"Groq whisper-large-v3 xatosi: {e}. Turbo modelga urinib ko'rilmoqda...")
+            response = await client.audio.transcriptions.create(
+                file=(filename, audio_bytes),
+                model="whisper-large-v3-turbo",
+                prompt=WHISPER_UZBEK_PROMPT,
+                language="uz",
+                temperature=0.0,
+                response_format="text"
+            )
+            text = str(response).strip()
+            logger.info(f"Groq Whisper-turbo muvaffaqiyatli yakunlandi: {text[:60]}...")
+            return text
+
     except Exception as e:
         logger.warning(f"Groq orqali ovozni aniqlashda xatolik: {e}. Google STT ga o'tilmoqda...")
         return None
 
 async def transcribe_with_google(wav_path: str) -> str | None:
-    """Google Speech Recognition (uz-UZ) orqali ovozni matnga o'girish"""
+    """Google Speech Recognition (uz-UZ) orqali ovozni matnga o'girish (zaxira)"""
     import speech_recognition as sr
     recognizer = sr.Recognizer()
 
@@ -74,9 +107,10 @@ async def transcribe_with_google(wav_path: str) -> str | None:
 
 async def transcribe_voice(file_path: str) -> str | None:
     """
-    Ovozli faylni qabul qilib, o'zbekcha matnga o'giradi.
-    1. Agar GROQ_API_KEY bo'lsa, birinchi navbatda Groq Whisper-large-v3 ishlatiladi.
-    2. Aks holda yoki xatolik yuz bersa, Google Speech Recognition (uz-UZ) ga o'tadi.
+    Ovozli faylni qabul qilib, o'zbekcha matnga o'giradi:
+    1. Groq Whisper Large v3 (yuqori sifatli va tezkor)
+    2. Groq Whisper Turbo (zaxira)
+    3. Google Speech Recognition uz-UZ (offline/fallback)
     """
     # 1. Groq tekshiruvi
     if settings.GROQ_API_KEY:
